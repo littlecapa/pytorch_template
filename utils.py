@@ -88,41 +88,51 @@ def set_logger(log_path):
         stream_handler.setFormatter(logging.Formatter('%(message)s'))
         logger.addHandler(stream_handler)
 
+DEFAULT_MODEL_DIR = "./model/"
+DEFAULT_CHECKPOINT_SUBDIR = "checkpoint/"
+BEST_DICT_JSON = "metrics_val_best_weights.json"
+DEFAULT_DICT_JSON = "metrics_val_last_weights.json"
+DEFAULT_CHECKPOINT_FILENAME = "last.pth.tar"
+BEST_CHECKPOINT_FILENAME = "best.pth.tar"
 
-def save_dict_to_json(d, json_path):
+def save_dict_to_json(d, model_dir = DEFAULT_MODEL_DIR, json_file_name = DEFAULT_DICT_JSON):
     """Saves dict of floats in json file
 
     Args:
         d: (dict) of float-castable values (np.float, int, float, etc.)
         json_path: (string) path to json file
     """
+    json_path = os.path.join(model_dir, json_file_name)
     with open(json_path, 'w') as f:
         # We need to convert the values to float for json (it doesn't accept np.array, np.float, )
         d = {k: float(v) for k, v in d.items()}
         json.dump(d, f, indent=4)
 
+def checkpoint_dir(model_dir):
+    return os.path.join(model_dir, DEFAULT_CHECKPOINT_SUBDIR)
 
-def save_checkpoint(state, is_best, checkpoint):
-    """Saves model and training parameters at checkpoint + 'last.pth.tar'. If is_best==True, also saves
-    checkpoint + 'best.pth.tar'
+def save_checkpoint(state, is_best, model_dir  = DEFAULT_MODEL_DIR):
+    """Saves model and training parameters at model_dir + "/checkpoint/" + 'last.pth.tar'. If is_best==True, also saves 'best.pth.tar'
 
     Args:
         state: (dict) contains model's state_dict, may contain other keys such as epoch, optimizer state_dict
         is_best: (bool) True if it is the best model seen till now
         checkpoint: (string) folder where parameters are to be saved
     """
-    filepath = os.path.join(checkpoint, 'last.pth.tar')
-    if not os.path.exists(checkpoint):
+    checkpoint = checkpoint_dir(model_dir)
+    filepath = os.path.join(checkpoint, DEFAULT_CHECKPOINT_FILENAME)
+    if not os.path.exists(filepath):
         print("Checkpoint Directory does not exist! Making directory {}".format(checkpoint))
         os.mkdir(checkpoint)
     else:
-        print("Checkpoint Directory exists! ")
+        print("Checkpoint Directory exists! {}".format(checkpoint))
     torch.save(state, filepath)
+    print("Checkpoint saved! {}".format(filepath))
     if is_best:
-        shutil.copyfile(filepath, os.path.join(checkpoint, 'best.pth.tar'))
+        shutil.copyfile(filepath, os.path.join(checkpoint, BEST_CHECKPOINT_FILENAME))
 
 
-def load_checkpoint(checkpoint, model, optimizer=None):
+def load_checkpoint(model, optimizer=None, model_dir = DEFAULT_MODEL_DIR, restore_file = DEFAULT_CHECKPOINT_FILENAME):
     """Loads model parameters (state_dict) from file_path. If optimizer is provided, loads state_dict of
     optimizer assuming it is present in checkpoint.
 
@@ -131,6 +141,7 @@ def load_checkpoint(checkpoint, model, optimizer=None):
         model: (torch.nn.Module) model for which the parameters are loaded
         optimizer: (torch.optim) optional: resume optimizer from checkpoint
     """
+    checkpoint = os.path.join(checkpoint_dir(model_dir), restore_file)
     if not os.path.exists(checkpoint):
         raise("File doesn't exist {}".format(checkpoint))
     checkpoint = torch.load(checkpoint)

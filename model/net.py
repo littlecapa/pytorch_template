@@ -50,6 +50,8 @@ class Net(nn.Module):
         self.fc2 = nn.Linear(self.num_channels*4, 6)       
         self.dropout_rate = params.dropout_rate
 
+        self.first = True
+
     def forward(self, s):
         """
         This function defines how we use the components of our network to operate on an input batch.
@@ -81,43 +83,8 @@ class Net(nn.Module):
 
         # apply log softmax on each image's output (this is recommended over applying softmax
         # since it is numerically more stable)
+
+        if self.first:
+            self.first = False
+            print(f"S: {s}, Softmax: {F.log_softmax(s, dim=1)}")
         return F.log_softmax(s, dim=1)
-
-
-def loss_fn(outputs, labels):
-    """
-    Compute the cross entropy loss given outputs and labels.
-
-    Args:
-        outputs: (Variable) dimension batch_size x 6 - output of the model
-        labels: (Variable) dimension batch_size, where each element is a value in [0, 1, 2, 3, 4, 5]
-
-    Returns:
-        loss (Variable): cross entropy loss for all images in the batch
-
-    Note: you may use a standard loss function from http://pytorch.org/docs/master/nn.html#loss-functions. This example
-          demonstrates how you can easily define a custom loss function.
-    """
-    num_examples = outputs.size()[0]
-    return -torch.sum(outputs[range(num_examples), labels])/num_examples
-
-
-def accuracy(outputs, labels):
-    """
-    Compute the accuracy, given the outputs and labels for all images.
-
-    Args:
-        outputs: (np.ndarray) dimension batch_size x 6 - log softmax output of the model
-        labels: (np.ndarray) dimension batch_size, where each element is a value in [0, 1, 2, 3, 4, 5]
-
-    Returns: (float) accuracy in [0,1]
-    """
-    outputs = np.argmax(outputs, axis=1)
-    return np.sum(outputs==labels)/float(labels.size)
-
-
-# maintain all metrics required in this dictionary- these are used in the training and evaluation loops
-metrics = {
-    'accuracy': accuracy,
-    # could add more metrics such as accuracy for each token type
-}
