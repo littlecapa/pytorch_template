@@ -7,7 +7,10 @@ import os
 import numpy as np
 import torch
 from torch.autograd import Variable
-import utils
+from utils.file_utils import load_checkpoint, save_checkpoint
+from utils.logger_utils import set_logger
+from utils.param_utils import Params
+
 import model.net as net
 import model.data_loader as data_loader
 
@@ -80,7 +83,7 @@ if __name__ == '__main__':
     json_path = os.path.join(args.model_dir, 'params.json')
     assert os.path.isfile(
         json_path), "No json configuration file found at {}".format(json_path)
-    params = utils.Params(json_path)
+    params = Params(json_path)
 
     # use GPU if available
     params.cuda = torch.cuda.is_available()     # use GPU is available
@@ -91,7 +94,7 @@ if __name__ == '__main__':
         torch.cuda.manual_seed(230)
 
     # Get the logger
-    utils.set_logger(os.path.join(args.model_dir, 'evaluate.log'))
+    set_logger(os.path.join(args.model_dir, 'evaluate.log'))
 
     # Create the input data pipeline
     logging.info("Creating the dataset...")
@@ -111,11 +114,11 @@ if __name__ == '__main__':
     logging.info("Starting evaluation")
 
     # Reload weights from the saved file
-    utils.load_checkpoint(os.path.join(
+    load_checkpoint(os.path.join(
         args.model_dir, args.restore_file + '.pth.tar'), model)
 
     # Evaluate
     test_metrics = evaluate(model, loss_fn, test_dl, metrics, params)
     save_path = os.path.join(
         args.model_dir, "metrics_test_{}.json".format(args.restore_file))
-    utils.save_dict_to_json(test_metrics, save_path)
+    save_dict_to_json(test_metrics, save_path)
