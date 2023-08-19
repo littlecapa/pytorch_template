@@ -1,9 +1,15 @@
 {
-    "learning_rate": 1e-3,
-    "batch_size": 32,
-    "num_epochs": 2,
-    "dropout_rate":0.8, 
+    "learning_rate": [1e-3, 1e-2],
+    "batch_size": [32, 64],
+    "num_epochs": [10],
+    "dropout_rate":[0.2, 0.8], 
     "num_channels": 32,
     "save_summary_steps": 100,
-    "num_workers": 4
+    "num_workers": 4,
+    "restore": false,
+    "seed": 230,
+    "data_dir": "/Users/littlecapa/GIT/python/pytorch_template/data/64x64_SIGNS",
+    "checkpoint_dir": "/Users/littlecapa/GIT/python/pytorch_template/experiments/quick_start/checkpoint",
+    "stats_dir": "/Users/littlecapa/GIT/python/pytorch_template/experiments/quick_start/stats",
+    "log_dir": "/Users/littlecapa/GIT/python/pytorch_template/experiments/quick_start/logs"
 }

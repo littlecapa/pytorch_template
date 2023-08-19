@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import logging
 
 
 class Net(nn.Module):
@@ -19,7 +20,7 @@ class Net(nn.Module):
     The documentation for all the various components available o you is here: http://pytorch.org/docs/master/nn.html
     """
 
-    def __init__(self, params):
+    def __init__(self, dropout_rate, params):
         """
         We define an convolutional network that predicts the sign from an image. The components
         required are:
@@ -48,7 +49,7 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(8*8*self.num_channels*4, self.num_channels*4)
         self.fcbn1 = nn.BatchNorm1d(self.num_channels*4)
         self.fc2 = nn.Linear(self.num_channels*4, 6)       
-        self.dropout_rate = params.dropout_rate
+        self.dropout_rate = dropout_rate
 
         self.first = True
 
@@ -77,8 +78,18 @@ class Net(nn.Module):
         s = s.view(-1, 8*8*self.num_channels*4)             # batch_size x 8*8*num_channels*4
 
         # apply 2 fully connected layers with dropout
-        s = F.dropout(F.relu(self.fcbn1(self.fc1(s))), 
-            p=self.dropout_rate, training=self.training)    # batch_size x self.num_channels*4
+        # Dropout only, if training and batch_size > 1 and dropout_rate > 0
+        batch_size = s.size(0)
+        training_with_dropout = self.training and batch_size > 1 and self.dropout_rate > 0.0
+        if training_with_dropout:
+            s = F.dropout(F.relu(self.fcbn1(self.fc1(s))), 
+                p=self.dropout_rate, training = True)
+        else:
+            s = self.fc1(s)
+            if batch_size > 1:
+                s = self.fcbn1(s)
+            s = F.relu(s)
+        # batch_size x self.num_channels*4
         s = self.fc2(s)                                     # batch_size x 6
 
         # apply log softmax on each image's output (this is recommended over applying softmax
@@ -86,5 +97,4 @@ class Net(nn.Module):
 
         if self.first:
             self.first = False
-            print(f"S: {s}, Softmax: {F.log_softmax(s, dim=1)}")
         return F.log_softmax(s, dim=1)

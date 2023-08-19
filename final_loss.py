@@ -16,7 +16,8 @@ def final_loss_fn(outputs, labels):
     max_prob_indices = torch.argmax(probabilities, dim=1)
     
     # Create a binary tensor where 0 indicates correct label has highest probability, and 1 otherwise
-    loss = torch.where(max_prob_indices != labels, torch.zeros_like(labels, dtype=torch.float32), torch.ones_like(labels, dtype=torch.float32))
+    loss = torch.where(max_prob_indices != labels, torch.zeros_like(labels, dtype=torch.int), torch.ones_like(labels, dtype=torch.int))
     
     num_examples = outputs.size()[0]
-    return torch.sum(loss)/num_examples
+    loss = torch.sum(loss)/num_examples
+    return loss

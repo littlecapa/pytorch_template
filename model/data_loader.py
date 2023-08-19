@@ -54,10 +54,11 @@ class SIGNSDataset(Dataset):
         """
         image = Image.open(self.filenames[idx])  # PIL image
         image = self.transform(image)
+        Image.close()
         return image, self.labels[idx]
 
 
-def fetch_dataloader(types, data_dir, params):
+def fetch_dataloader(types, batch_size, params):
     """
     Fetches the DataLoader object for each type in types from data_dir.
 
@@ -73,15 +74,15 @@ def fetch_dataloader(types, data_dir, params):
 
     for split in ['train', 'val', 'test']:
         if split in types:
-            path = os.path.join(data_dir, "{}_signs".format(split))
+            path = os.path.join(params.data_dir, "{}_signs".format(split))
 
             # use the train_transformer if training data, else use eval_transformer without random flip
             if split == 'train':
-                dl = DataLoader(SIGNSDataset(path, train_transformer), batch_size=params.batch_size, shuffle=True,
+                dl = DataLoader(SIGNSDataset(path, train_transformer), batch_size=batch_size, shuffle=True,
                                         num_workers=params.num_workers,
                                         pin_memory=params.cuda)
             else:
-                dl = DataLoader(SIGNSDataset(path, eval_transformer), batch_size=params.batch_size, shuffle=False,
+                dl = DataLoader(SIGNSDataset(path, eval_transformer), batch_size=batch_size, shuffle=False,
                                 num_workers=params.num_workers,
                                 pin_memory=params.cuda)
 

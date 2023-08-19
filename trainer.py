@@ -6,23 +6,29 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from tqdm import tqdm
+import json
 
 import model.net as net
 import model.data_loader as data_loader
-from utils.stats_utils import RunningAverage
+from utils.stats_utils import RunningAverage, Summary
 from utils.file_utils import load_checkpoint, save_checkpoint, save_dict_to_json, BEST_DICT_JSON
 
 class Trainer():
 
-    def __init__(self, model, optimizer, loss_fn, final_test_loss_fn, train_dataloader, val_dataloader, test_dataloader):
-        self.model = model
-        self.optimizer = optimizer
+    def __init__(self, loss_fn):
         self.loss_fn = loss_fn
+
+    def set_model(self, model):
+        self.model = model
+    
+    def set_loader(self, train_dataloader, val_dataloader, test_dataloader):
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
         self.test_dataloader = test_dataloader
-        self.final_test_loss_fn = final_test_loss_fn
-    
+
+    def set_optimizer(self, optimizer):
+        self.optimizer = optimizer
+
     def run_model(self, loss_fn, loader, metrics, params, training = False):
         if training:
             self.model.train()
@@ -59,16 +65,11 @@ class Trainer():
                     # extract data from torch Variable, move to cpu, convert to numpy arrays
                     output_batch = output_batch.data.cpu().numpy()
                     labels_batch = labels_batch.data.cpu().numpy()
-
                     # compute all metrics on this batch
                     summary_batch = {metric: metrics[metric](output_batch, labels_batch)
                                     for metric in metrics}
                     summary_batch['loss'] = loss.item()
                     summ.append(summary_batch)
-
-                    logging.info(f"Loss: {loss}")
-                    logging.info(f"output_batch: {output_batch}")
-                    logging.info(f"labels_batch: {labels_batch}")
 
                 if training:
                     # update the average loss
@@ -83,8 +84,7 @@ class Trainer():
         metrics_string = " ; ".join("{}: {:05.3f}".format(k, v)
                                     for k, v in metrics_mean.items())
         logging.info("- Train metrics: " + metrics_string)
-        return metrics_mean
-    
+        return metrics_mean, summary_batch
     
     def train_and_evaluate(self, metrics, params, model_dir, restore):
         """Train the model and evaluate every epoch.
@@ -103,18 +103,23 @@ class Trainer():
         # reload weights from restore_file if specified
         if restore:
             logging.info("Restoring parameters from ")
-            load_checkpoint(model = self.model, optimizer = self.optimizer)
+            load_checkpoint(model = self.model, checkpoint_dir = params.checkpoint_dir, optimizer = self.optimizer)
         best_val_acc = 0.0
+        summary_collector = Summary()
 
         for epoch in range(params.num_epochs):
             # Run one epoch
             logging.info("Epoch {}/{}".format(epoch + 1, params.num_epochs))
 
+            logging.info("Training")
             # compute number of batches in one epoch (one full pass over the training set)
-            _ = self.run_model(loss_fn = self.loss_fn, loader = self.train_dataloader, metrics = metrics, params = params, training = True)
+            _, summary = self.run_model(loss_fn = self.loss_fn, loader = self.train_dataloader, metrics = metrics, params = params, training = True)
+            summary_collector.add(summary, "Training")
 
             # Evaluate for one epoch on validation set
-            val_metrics = self.run_model(loss_fn = self.loss_fn, loader = self.train_dataloader, metrics = metrics, params = params, training = False)
+            logging.info("Validation")
+            val_metrics, summary = self.run_model(loss_fn = self.loss_fn, loader = self.train_dataloader, metrics = metrics, params = params, training = False)
+            summary_collector.add(summary, "Validation")
 
             val_acc = val_metrics['accuracy']
             is_best = val_acc >= best_val_acc
@@ -124,7 +129,7 @@ class Trainer():
                                 'state_dict': self.model.state_dict(),
                                 'optim_dict': self.optimizer.state_dict()},
                                 is_best=is_best,
-                                model_dir=model_dir)
+                                checkpoint_dir = params.checkpoint_dir)
 
             # If best_eval, best_save_path
             if is_best:
@@ -132,16 +137,16 @@ class Trainer():
                 best_val_acc = val_acc
 
                 # Save best val metrics in a json file in the model directory
-                save_dict_to_json(d = val_metrics, json_file_name = BEST_DICT_JSON)
+                save_dict_to_json(d = val_metrics, checkpoint_dir = params.checkpoint_dir, json_file_name = BEST_DICT_JSON)
                 
             # Save latest val metrics in a json file in the model directory
-            save_dict_to_json(d = val_metrics)
+            save_dict_to_json(d = val_metrics, checkpoint_dir = params.checkpoint_dir)
 
         #
         # Final Evaluation Test
         #
-        test_metrics = self.run_model(loss_fn = self.final_test_loss_fn, loader = self.train_dataloader, metrics = metrics, params = params, training = False)
+        logging.info("Testing")
+        test_metrics, summary = self.run_model(loss_fn = self.loss_fn, loader = self.train_dataloader, metrics = metrics, params = params, training = False)
+        summary_collector.add(summary, "Testing")
         logging.info(f"Test Metrics: {test_metrics}")
-
-
-
+        return test_metrics, summary_collector.get_all()

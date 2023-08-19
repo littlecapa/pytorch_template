@@ -1,16 +1,19 @@
 import json
+import copy
 import logging
 
-class Params():
-    """Class that loads hyperparameters from a json file.
+class DictWithAttributes(dict):
+    def __getattr__(self, key):
+        if key in self:
+            return self[key]
+        else:
+            raise AttributeError(f"'DictWithAttributes' object has no attribute '{key}'")
 
-    Example:
-    ```
-    params = Params(json_path)
-    print(params.learning_rate)
-    params.learning_rate = 0.5  # change the value of learning_rate in params
-    ```
-    """
+    def __setattr__(self, key, value):
+        self[key] = value
+
+class Params():
+    """Class that loads all parameters from a json file."""
 
     def __init__(self, json_path):
         with open(json_path) as f:
@@ -31,3 +34,12 @@ class Params():
     def dict(self):
         """Gives dict-like access to Params instance by `params.dict['learning_rate']"""
         return self.__dict__
+    
+    def get_training_params_dict(self, learning_rate, batch_size, num_epochs, dropout_rate):
+        deep_copied_dict = DictWithAttributes(copy.deepcopy(self.__dict__))
+        print(f"DeepCopy: {deep_copied_dict}")
+        deep_copied_dict.learning_rate = learning_rate
+        deep_copied_dict.batch_size = batch_size
+        deep_copied_dict.num_epochs = num_epochs
+        deep_copied_dict.dropout_rate = dropout_rate
+        return deep_copied_dict
