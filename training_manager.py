@@ -10,13 +10,14 @@ import torch.optim as optim
 from utils.logger_utils import set_logger
 from utils.param_utils import Params
 from utils.file_utils import save_dict_to_json
+from utils.stats_utils import save_stats
+from utils.metrics_utils import metrics
 
 import model.net as net
 import model.data_loader as data_loader
 from evaluate import evaluate
 from trainer import Trainer
 from loss import loss_fn
-from metrics import metrics
 from evaluate import evaluate
 
 parser = argparse.ArgumentParser()
@@ -48,9 +49,7 @@ class Training_Manager():
                         self.trainer.set_model(model)
                         training_params = params.get_training_params_dict(learning_rate, batch_size, num_epochs, dropout_rate)
                         results, summary = self.start_training(metrics, training_params, experimient_dir, restore)
-                        filename = f"metrics_{learning_rate}_{batch_size}_{num_epochs}_{dropout_rate}.json"
-                        save_dict_to_json(results, params.stats_dir, filename)
-                        logging.debug(summary)
+                        save_stats(training_params, results, summary, optimizer = "Adam", loss_fn = "loss.py")
 
 if __name__ == '__main__':
 

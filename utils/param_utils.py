@@ -43,3 +43,10 @@ class Params():
         deep_copied_dict.num_epochs = num_epochs
         deep_copied_dict.dropout_rate = dropout_rate
         return deep_copied_dict
+    
+def get_training_params_csv_str(training_params):
+    output = str(training_params.learning_rate) +";"
+    output += str(training_params.batch_size) +";"
+    output += str(training_params.num_epochs) +";"
+    output += str(training_params.dropout_rate)
+    return output

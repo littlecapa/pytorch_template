@@ -1,5 +1,8 @@
 import logging
 import json
+from utils.param_utils import get_training_params_csv_str
+from utils.file_utils import write_line_to_csv_file
+from utils.metrics_utils import metrics_to_csv_string
 
 class RunningAverage():
     """A simple class that maintains the running average of a quantity
@@ -36,3 +39,10 @@ class Summary():
     
     def get_all(self):
         return self.summary
+
+DEFAULT_STATS_FILE = "stats.csv"   
+def save_stats(training_params, results, summary, optimizer, loss_fn):
+    line = get_training_params_csv_str(training_params) + ";"
+    line += optimizer + ";" + loss_fn + ";"
+    line += metrics_to_csv_string(results)
+    write_line_to_csv_file(training_params.stats_dir, DEFAULT_STATS_FILE, line)

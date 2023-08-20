@@ -36,6 +36,7 @@ class SIGNSDataset(Dataset):
 
         self.labels = [int(os.path.split(filename)[-1][0]) for filename in self.filenames]
         self.transform = transform
+        self.last_image = None
 
     def __len__(self):
         # return size of dataset
@@ -53,10 +54,17 @@ class SIGNSDataset(Dataset):
             label: (int) corresponding label of image
         """
         image = Image.open(self.filenames[idx])  # PIL image
+        self.close_last_image()
+        self.last_image = image
         image = self.transform(image)
-        Image.close()
         return image, self.labels[idx]
+    
+    def close_last_image(self):
+        if self.last_image != None:
+            self.last_image.close()
 
+    def __del__(self):
+        self.close_last_image()
 
 def fetch_dataloader(types, batch_size, params):
     """
